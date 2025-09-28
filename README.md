@@ -63,70 +63,93 @@ python3 -m http.server 8080
 
 Open http://localhost:8080 in your browser.
 
-## Usage
-Wait for model initialization (approximately 10-15 seconds)
-Click "START WEBCAM" to access camera or upload video file
-Click "START DETECTION" to begin real-time analysis
-Monitor threat levels and performance metrics
-Export data using "EXPORT DATA" for analysis
+### Usage
+1. Wait for model initialization (approximately 10-15 seconds)
+2. Click "START WEBCAM" to access camera or upload video file
+3. Click "START DETECTION" to begin real-time analysis
+4. Monitor threat levels and performance metrics
+5. Export data using "EXPORT DATA" for analysis
 
 ## System Architecture
+
 The system processes video input through a real-time detection pipeline:
 
-Input Layer: Webcam feed or uploaded video files
-AI Processing: TensorFlow.js with COCO-SSD model
-Threat Assessment: Dynamic risk scoring based on detected objects
-Visualization: Real-time bounding boxes and confidence scores
-Monitoring: Performance metrics and system health tracking
-Export: JSON data export for post-mission analysis
+1. **Input Layer**: Webcam feed or uploaded video files
+2. **AI Processing**: TensorFlow.js with COCO-SSD model
+3. **Threat Assessment**: Dynamic risk scoring based on detected objects
+4. **Visualization**: Real-time bounding boxes and confidence scores
+5. **Monitoring**: Performance metrics and system health tracking
+6. **Export**: JSON data export for post-mission analysis
 
 ## Threat Assessment Matrix
-Objects are classified into threat levels:
 
-Level 0: No threat (traffic lights, furniture)
-Level 1: Low threat (vehicles, personal items)
-Level 2: Medium threat (personnel, large vehicles, luggage)
-Level 3: High threat (aircraft, weapons, unknown objects)
+Objects are classified into threat levels:
+- **Level 0**: No threat (traffic lights, furniture)
+- **Level 1**: Low threat (vehicles, personal items)
+- **Level 2**: Medium threat (personnel, large vehicles, luggage)
+- **Level 3**: High threat (aircraft, weapons, unknown objects)
 
 ## Use Cases
+
 ### Military Applications
-Perimeter security monitoring
-Vehicle checkpoint screening
-Personnel tracking in restricted areas
-Drone surveillance analysis
+- Perimeter security monitoring
+- Vehicle checkpoint screening
+- Personnel tracking in restricted areas
+- Drone surveillance analysis
 
 ### Commercial Security
-Airport security screening
-Border control operations
-Critical infrastructure protection
-Event security monitoring
+- Airport security screening
+- Border control operations
+- Critical infrastructure protection
+- Event security monitoring
 
 ### Emergency Response
-Search and rescue operations
-Disaster response coordination
-Traffic monitoring
-Crowd analysis
+- Search and rescue operations
+- Disaster response coordination
+- Traffic monitoring
+- Crowd analysis
 
+## Hardware Requirements
 
+| Category | Minimum | Recommended | Professional |
+|----------|---------|-------------|--------------|
+| CPU | Intel i5 / AMD Ryzen 5 | Intel i7 / AMD Ryzen 7 | Intel i9 / Xeon |
+| RAM | 8GB | 16GB | 32GB+ |
+| GPU | Integrated Graphics | Dedicated GPU | Professional GPU |
+| Storage | 1GB available | 5GB available | 10GB+ |
 
 ## Security Features
-Client-side processing ensures data never leaves the device
-No external API calls during operation
-Configurable logging levels for operational security
-Air-gapped operation capability
-Session isolation between uses
+
+- Client-side processing ensures data never leaves the device
+- No external API calls during operation
+- Configurable logging levels for operational security
+- Air-gapped operation capability
+- Session isolation between uses
+
+## Browser Compatibility
+
+- Chrome 80+ (recommended)
+- Firefox 75+
+- Safari 13+
+- Edge 80+
+
+WebGL support required for GPU acceleration.
 
 ## Contributing
+
 Contributions are welcome from the defense technology community. Please ensure all contributions maintain the security and performance standards required for tactical applications.
 
 ## License
+
 MIT License - see LICENSE file for details.
 
 ## Support
+
 For technical support, deployment assistance, or enterprise inquiries:
-Issues: https://github.com/rikulauttia/tactical-edge-ai/issues
-Documentation: See docs/ directory
-Contact: riku@lauttia.com
+- **Issues**: https://github.com/rikulauttia/tactical-edge-ai/issues
+- **Email**: riku@lauttia.com
+- **Documentation**: See docs/ directory
 
 ## Acknowledgments
+
 Built using TensorFlow.js framework and COCO-SSD pre-trained models. Designed for the defense technology community with focus on operational reliability and edge deployment capabilities.
