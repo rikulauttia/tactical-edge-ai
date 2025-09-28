@@ -148,7 +148,6 @@ MIT License - see LICENSE file for details.
 For technical support, deployment assistance, or enterprise inquiries:
 - **Issues**: https://github.com/rikulauttia/tactical-edge-ai/issues
 - **Email**: riku@lauttia.com
-- **Documentation**: See docs/ directory
 
 ## Acknowledgments
 
