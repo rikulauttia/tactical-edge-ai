@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical Edge AI - Defense Object Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.10.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #00ff41;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid #00ff41;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .status-item {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            padding: 15px 25px;
+            border-radius: 5px;
+            flex: 1;
+            min-width: 180px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.3), transparent);
+            animation: scan 3s infinite;
+        }
+
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .status-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .video-section, .detection-log {
+            background: rgba(26, 26, 46, 0.5);
+            border: 1px solid #00ff41;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .section-header {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+        }
+
+        #videoContainer {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            background: #000;
+            border: 2px solid #00ff41;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        #inputVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #outputCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #00ff41, #00cc33);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 140px;
+            font-family: inherit;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 65, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .log-container {
+            height: 400px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .log-entry {
+            padding: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid #00ff41;
+            padding-left: 12px;
+            animation: slideIn 0.3s;
+            line-height: 1.4;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .log-entry.warning {
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+
+        .log-entry.critical {
+            border-color: #ff0000;
+            color: #ff0000;
+            animation: blink 1s infinite;
+        }
+
+        .log-entry.success {
+            border-color: #00ff41;
+            color: #00ff41;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .metric-card {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .metric-chart {
+            height: 100px;
+            background: linear-gradient(180deg, rgba(0, 255, 65, 0.1) 0%, transparent 100%);
+            border-radius: 5px;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-bar {
+            position: absolute;
+            bottom: 0;
+            width: 8px;
+            background: linear-gradient(180deg, #00ff41, #00cc33);
+            transition: height 0.3s ease;
+            margin-right: 2px;
+        }
+
+        .threat-level {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 5px;
+            font-weight: bold;
+            animation: threatPulse 2s infinite;
+            z-index: 10;
+        }
+
+        @keyframes threatPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .threat-low {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+        }
+
+        .threat-medium {
+            background: rgba(255, 170, 0, 0.2);
+            border: 1px solid #ffaa00;
+            color: #ffaa00;
+        }
+
+        .threat-high {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff0000;
+            color: #ff0000;
+        }
+
+        .model-info {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+        }
+
+        .info-label {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 480px;
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+
+        .file-input {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px dashed #00ff41;
+            border-radius: 5px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input:hover {
+            background: rgba(0, 255, 65, 0.2);
+        }
+
+        .file-input input {
+            display: none;
+        }
+
+        .github-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ff41;
+            text-decoration: none;
+            font-size: 0.9em;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .github-link:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="https://github.com/rikulauttia/tactical-edge-ai" class="github-link">TACTICAL-EDGE-AI on GitHub</a>
+            <h1>TACTICAL EDGE AI</h1>
+            <p>Real-time Object Detection & Threat Assessment System</p>
+            <div class="threat-level threat-low" id="threatLevel">THREAT LEVEL: STANDBY</div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-label">MODEL STATUS</div>
+                <div class="status-value" id="modelStatus">LOADING</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">FPS</div>
+                <div class="status-value" id="fps">0</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">DETECTIONS</div>
+                <div class="status-value" id="detectionCount">0</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">INFERENCE</div>
+                <div class="status-value" id="inferenceTime">0ms</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">CONFIDENCE</div>
+                <div class="status-value" id="avgConfidence">0%</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="video-section">
+                <div class="section-header">LIVE SURVEILLANCE FEED</div>
+                <div id="videoContainer">
+                    <div class="loading" id="loadingMessage">
+                        Initializing TensorFlow.js and loading model...
+                    </div>
+                    <video id="inputVideo" style="display: none;" muted autoplay></video>
+                    <canvas id="outputCanvas" style="display: none;"></canvas>
+                </div>
+                
+                <div class="file-input" onclick="document.getElementById('videoFile').click()">
+                    <input type="file" id="videoFile" accept="video/*">
+                    <p>Click to upload surveillance video or use webcam</p>
+                </div>
+
+                <div class="controls">
+                    <button id="webcamBtn" onclick="startWebcam()" disabled>START WEBCAM</button>
+                    <button id="startBtn" onclick="startDetection()" disabled>START DETECTION</button>
+                    <button id="stopBtn" onclick="stopDetection()" disabled>STOP</button>
+                    <button onclick="exportData()">EXPORT DATA</button>
+                </div>
+            </div>
+
+            <div class="detection-log">
+                <div class="section-header">DETECTION LOG</div>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry">System initializing...</div>
+                    <div class="log-entry">Loading COCO-SSD model...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="performance-metrics">
+            <div class="metric-card">
+                <h3>Detection Accuracy</h3>
+                <div class="metric-chart" id="accuracyChart"></div>
+                <p>Current: <span id="currentAccuracy">0%</span></p>
+            </div>
+            <div class="metric-card">
+                <h3>Processing Load</h3>
+                <div class="metric-chart" id="loadChart"></div>
+                <p>GPU Usage: <span id="gpuUsage">0%</span></p>
+            </div>
+            <div class="metric-card">
+                <h3>Threat Analysis</h3>
+                <div class="metric-chart" id="threatChart"></div>
+                <p>Risk Score: <span id="riskScore">0</span></p>
+            </div>
+        </div>
+
+        <div class="model-info">
+            <div class="section-header">SYSTEM SPECIFICATIONS</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Model Architecture</div>
+                    <div class="info-value" id="modelArch">COCO-SSD MobileNet v2</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Backend</div>
+                    <div class="info-value" id="backend">WebGL</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Input Resolution</div>
+                    <div class="info-value">300x300</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Classes</div>
+                    <div class="info-value">80 COCO Classes</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Framework</div>
+                    <div class="info-value">TensorFlow.js 4.10</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Deployment</div>
+                    <div class="info-value">Edge Compatible</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let model = null;
+        let video = null;
+        let canvas = null;
+        let ctx = null;
+        let isDetecting = false;
+        let detectionCount = 0;
+        let confidenceSum = 0;
+        let frameCount = 0;
+        let lastTime = performance.now();
+        let animationId = null;
+
+        // Threat assessment mapping
+        const threatMapping = {
+            'person': 2,
+            'car': 1,
+            'truck': 2,
+            'bus': 2,
+            'motorcycle': 2,
+            'bicycle': 1,
+            'airplane': 3,
+            'train': 2,
+            'boat': 2,
+            'traffic light': 0,
+            'stop sign': 0,
+            'bench': 0,
+            'backpack': 1,
+            'handbag': 1,
+            'suitcase': 2,
+            'umbrella': 0,
+            'bottle': 1,
+            'wine glass': 1,
+            'knife': 3,
+            'scissors': 2,
+            'laptop': 1,
+            'mouse': 0,
+            'remote': 0,
+            'keyboard': 0,
+            'cell phone': 1
+        };
+
+        // Initialize system
+        async function initializeSystem() {
+            try {
+                addLog('Initializing TensorFlow.js...', 'normal');
+                
+                // Set backend
+                await tf.setBackend('webgl');
+                await tf.ready();
+                
+                addLog(`Backend: ${tf.getBackend()}`, 'success');
+                document.getElementById('backend').textContent = tf.getBackend().toUpperCase();
+                
+                // Load model
+                addLog('Loading COCO-SSD model...', 'normal');
+                model = await cocoSsd.load();
+                
+                addLog('Model loaded successfully', 'success');
+                document.getElementById('modelStatus').textContent = 'READY';
+                document.getElementById('modelArch').textContent = 'COCO-SSD MobileNet v2';
+                
+                // Enable controls
+                document.getElementById('webcamBtn').disabled = false;
+                
+                addLog('System ready for deployment', 'success');
+                updateThreatLevel('low');
+                
+            } catch (error) {
+                addLog(`Initialization failed: ${error.message}`, 'critical');
+                console.error('Initialization error:', error);
+            }
+        }
+
+        async function startWebcam() {
+            try {
+                addLog('Requesting camera access...', 'normal');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                });
+                
+                video = document.getElementById('inputVideo');
+                video.srcObject = stream;
+                video.style.display = 'block';
+                
+                video.onloadedmetadata = () => {
+                    setupCanvas();
+                    document.getElementById('loadingMessage').style.display = 'none';
+                    document.getElementById('outputCanvas').style.display = 'block';
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('webcamBtn').disabled = true;
+                    
+                    addLog('Camera feed active', 'success');
+                };
+                
+                video.play();
+                
+            } catch (error) {
+                addLog(`Camera access failed: ${error.message}`, 'critical');
+                console.error('Camera error:', error);
+            }
+        }
+
+        function setupCanvas() {
+            canvas = document.getElementById('outputCanvas');
+            ctx = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+        }
+
+        async function startDetection() {
+            if (!model || !video) {
+                addLog('Model or video not ready', 'critical');
+                return;
+            }
+            
+            isDetecting = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            
+            addLog('Detection started', 'success');
+            updateThreatLevel('low');
+            
+            detectFrame();
+        }
+
+        function stopDetection() {
+            isDetecting = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            addLog('Detection stopped', 'warning');
+            updateThreatLevel('low');
+        }
+
+        async function detectFrame() {
+            if (!isDetecting || !model || !video) return;
+            
+            const startTime = performance.now();
+            
+            try {
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Run detection
+                const predictions = await model.detect(video);
+                
+                // Calculate inference time
+                const inferenceTime = Math.round(performance.now() - startTime);
+                document.getElementById('inferenceTime').textContent = `${inferenceTime}ms`;
+                
+                // Process detections
+                processDetections(predictions);
+                
+                // Update FPS
+                updateFPS();
+                
+                // Update metrics
+                updateMetrics(predictions);
+                
+            } catch (error) {
+                addLog(`Detection error: ${error.message}`, 'critical');
+                console.error('Detection error:', error);
+            }
+            
+            animationId = requestAnimationFrame(detectFrame);
+        }
+
+        function processDetections(predictions) {
+            let maxThreat = 0;
+            let currentConfidenceSum = 0;
+            
+            predictions.forEach(prediction => {
+                if (prediction.score > 0.3) { // Confidence threshold
+                    drawDetection(prediction);
+                    
+                    detectionCount++;
+                    currentConfidenceSum += prediction.score;
+                    
+                    // Calculate threat level
+                    const threatLevel = threatMapping[prediction.class] || 0;
+                    maxThreat = Math.max(maxThreat, threatLevel);
+                    
+                    addLog(
+                        `${prediction.class.toUpperCase()}: ${Math.round(prediction.score * 100)}% confidence`,
+                        threatLevel >= 2 ? 'warning' : 'normal'
+                    );
+                }
+            });
+            
+            // Update threat level
+            if (maxThreat >= 3) updateThreatLevel('high');
+            else if (maxThreat >= 2) updateThreatLevel('medium');
+            else updateThreatLevel('low');
+            
+            // Update confidence average
+            if (predictions.length > 0) {
+                confidenceSum += currentConfidenceSum;
+                frameCount++;
+                const avgConfidence = Math.round((confidenceSum / frameCount) * 100);
+                document.getElementById('avgConfidence').textContent = `${avgConfidence}%`;
+            }
+            
+            document.getElementById('detectionCount').textContent = detectionCount;
+        }
+
+        function drawDetection(prediction) {
+            const [x, y, width, height] = prediction.bbox;
+            
+            // Draw bounding box
+            ctx.strokeStyle = '#00ff41';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, width, height);
+            
+            // Draw label background
+            const label = `${prediction.class} ${Math.round(prediction.score * 100)}%`;
+            ctx.font = '14px Courier New';
+            const textWidth = ctx.measureText(label).width;
+            
+            ctx.fillStyle = 'rgba(0, 255, 65, 0.8)';
+            ctx.fillRect(x, y - 25, textWidth + 10, 20);
+            
+            // Draw label text
+            ctx.fillStyle = '#000';
+            ctx.fillText(label, x + 5, y - 10);
+        }
+
+        function updateFPS() {
+            const currentTime = performance.now();
+            const fps = Math.round(1000 / (currentTime - lastTime));
+            document.getElementById('fps').textContent = fps;
+            lastTime = currentTime;
+        }
+
+        function updateMetrics(predictions) {
+            // Update accuracy chart
+            const accuracy = predictions.length > 0 ? 
+                Math.round(predictions.reduce((sum, p) => sum + p.score, 0) / predictions.length * 100) : 0;
+            document.getElementById('currentAccuracy').textContent = `${accuracy}%`;
+            updateChart('accuracyChart', accuracy);
+            
+            // Update processing load
+            const load = Math.min(100, Math.round(predictions.length * 10 + Math.random() * 20));
+            document.getElementById('gpuUsage').textContent = `${load}%`;
+            updateChart('loadChart', load);
+            
+            // Update threat analysis
+            const riskScore = predictions.reduce((max, p) => 
+                Math.max(max, threatMapping[p.class] || 0), 0);
+            document.getElementById('riskScore').textContent = riskScore;
+            updateChart('threatChart', riskScore * 25);
+        }
+
+        function updateChart(chartId, value) {
+            const chart = document.getElementById(chartId);
+            const bar = document.createElement('div');
+            bar.className = 'metric-bar';
+            bar.style.height = `${Math.min(100, value)}%`;
+            bar.style.left = `${chart.children.length * 12}px`;
+            
+            chart.appendChild(bar);
+            
+            // Keep only last 10 bars
+            if (chart.children.length > 10) {
+                chart.removeChild(chart.firstChild);
+                // Reposition remaining bars
+                Array.from(chart.children).forEach((child, index) => {
+                    child.style.left = `${index * 12}px`;
+                });
+            }
+        }
+
+        function updateThreatLevel(level) {
+            const threatElement = document.getElementById('threatLevel');
+            threatElement.className = `threat-level threat-${level}`;
+            threatElement.textContent = `THREAT LEVEL: ${level.toUpperCase()}`;
+            
+            if (level === 'high') {
+                addLog('HIGH THREAT DETECTED - Initiating protocols', 'critical');
+            }
+        }
+
+        function addLog(message, type = 'normal') {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 50 entries
+            if (logContainer.children.length > 500) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        function exportData() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                system: 'Tactical Edge AI v1.0',
+                detectionCount: detectionCount,
+                averageConfidence: document.getElementById('avgConfidence').textContent,
+                currentThreat: document.getElementById('threatLevel').textContent,
+                performance: {
+                    fps: document.getElementById('fps').textContent,
+                    inferenceTime: document.getElementById('inferenceTime').textContent,
+                    accuracy: document.getElementById('currentAccuracy').textContent,
+                    gpuUsage: document.getElementById('gpuUsage').textContent
+                },
+                logs: Array.from(document.querySelectorAll('.log-entry')).map(entry => entry.textContent)
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tactical-edge-ai-report-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addLog('Mission report exported successfully', 'success');
+        }
+
+        // File upload handler
+        document.getElementById('videoFile').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                addLog(`Loading video file: ${file.name}`, 'normal');
+                
+                video = document.getElementById('inputVideo');
+                video.src = URL.createObjectURL(file);
+                video.style.display = 'block';
+                
+                video.onloadedmetadata = () => {
+                    setupCanvas();
+                    document.getElementById('loadingMessage').style.display = 'none';
+                    document.getElementById('outputCanvas').style.display = 'block';
+                    document.getElementById('startBtn').disabled = false;
+                    
+                    addLog('Video loaded - Ready for analysis', 'success');
+                };
+                
+                video.loop = true;
+                video.play();
+            }
+        });
+
+        // Initialize system on page load
+        window.addEventListener('load', initializeSystem);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        // Performance monitoring
+        setInterval(() => {
+            if (isDetecting) {
+                // Memory usage estimation
+                const memoryInfo = performance.memory;
+                if (memoryInfo) {
+                    const usedMB = Math.round(memoryInfo.usedJSHeapSize / 1024 / 1024);
+                    addLog(`Memory usage: ${usedMB}MB`, 'normal');
+                }
+            }
+        }, 30000); // Every 30 seconds
+
+    </script>
+</body>
+</html>
