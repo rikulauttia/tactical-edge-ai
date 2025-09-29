@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical Edge AI - Defense Object Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.10.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2"></script>
+    <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="https://github.com/rikulauttia/tactical-edge-ai" class="github-link">TACTICAL-EDGE-AI on GitHub</a>
+            <h1>TACTICAL EDGE AI</h1>
+            <p>Real-time Object Detection & Threat Assessment System</p>
+            <div class="threat-level threat-low" id="threatLevel">THREAT LEVEL: STANDBY</div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-label">MODEL STATUS</div>
+                <div class="status-value" id="modelStatus">LOADING</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">FPS</div>
+                <div class="status-value" id="fps">0</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">DETECTIONS</div>
+                <div class="status-value" id="detectionCount">0</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">INFERENCE</div>
+                <div class="status-value" id="inferenceTime">0ms</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">CONFIDENCE</div>
+                <div class="status-value" id="avgConfidence">0%</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="video-section">
+                <div class="section-header">LIVE SURVEILLANCE FEED</div>
+                <div id="videoContainer">
+                    <div class="loading" id="loadingMessage">
+                        Initializing TensorFlow.js and loading model...
+                    </div>
+                    <video id="inputVideo" style="display: none;" muted autoplay></video>
+                    <canvas id="outputCanvas" style="display: none;"></canvas>
+                </div>
+
+                <div class="file-input">
+                    <input type="file" id="videoFile" accept="video/*">
+                    <p>Click to upload surveillance video or use webcam</p>
+                </div>
+
+                <div class="controls">
+                    <button id="webcamBtn" disabled>START WEBCAM</button>
+                    <button id="startBtn" disabled>START DETECTION</button>
+                    <button id="stopBtn" disabled>STOP</button>
+                    <button>EXPORT DATA</button>
+                </div>
+            </div>
+
+            <div class="detection-log">
+                <div class="section-header">DETECTION LOG</div>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry">System initializing...</div>
+                    <div class="log-entry">Loading COCO-SSD model...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="performance-metrics">
+            <div class="metric-card">
+                <h3>Detection Accuracy</h3>
+                <div class="metric-chart" id="accuracyChart"></div>
+                <p>Current: <span id="currentAccuracy">0%</span></p>
+            </div>
+            <div class="metric-card">
+                <h3>Processing Load</h3>
+                <div class="metric-chart" id="loadChart"></div>
+                <p>GPU Usage: <span id="gpuUsage">0%</span></p>
+            </div>
+            <div class="metric-card">
+                <h3>Threat Analysis</h3>
+                <div class="metric-chart" id="threatChart"></div>
+                <p>Risk Score: <span id="riskScore">0</span></p>
+            </div>
+        </div>
+
+        <div class="model-info">
+            <div class="section-header">SYSTEM SPECIFICATIONS</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Model Architecture</div>
+                    <div class="info-value" id="modelArch">COCO-SSD MobileNet v2</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Backend</div>
+                    <div class="info-value" id="backend">WebGL</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Input Resolution</div>
+                    <div class="info-value">300x300</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Classes</div>
+                    <div class="info-value">80 COCO Classes</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Framework</div>
+                    <div class="info-value">TensorFlow.js 4.10</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Deployment</div>
+                    <div class="info-value">Edge Compatible</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/app.js"></script>
+</body>
+</html>

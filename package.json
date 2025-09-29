@@ -2,7 +2,7 @@
     "name": "tactical-edge-ai",
     "version": "1.0.0",
     "description": "Real-time edge AI object detection for defense & surveillance",
-    "main": "index.html",
+    "main": "public/index.html",
     "scripts": {
       "dev": "python -m http.server 8080",
       "test": "jest",
